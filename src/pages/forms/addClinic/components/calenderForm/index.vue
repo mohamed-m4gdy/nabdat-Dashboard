@@ -1,0 +1,263 @@
+<script lang="ts" setup>
+import validation from './validation'
+import type Iform from './Iform'
+import type dayType from '@/components/form/inputs/slotItem'
+// get form helper
+import formHock from '@/helpers/formHock'
+import axios from '@axios'
+import linkGnirator from '@/helpers/linkGenrator'
+
+const prop = defineProps(['doctorWorkspaceId'])
+const emit = defineEmits(['onSuccess'])
+
+
+// prepare item
+const formSetup: Iform = {
+  first_come: true,
+  time_interval: null,
+  waiting_time: null,
+  doctor_id: null,
+  workspace_id: null,
+  data: [
+    {
+      day: 'Sat',
+      slots: []
+    },
+    {
+      day: 'Sun',
+      slots: []
+    },
+    {
+      day: 'Mon',
+      slots: []
+    },
+    {
+      day: 'Tues',
+      slots: []
+    },
+    {
+      day: 'Wed',
+      slots: []
+    },
+    {
+      day: 'Thurs',
+      slots: []
+    },
+    {
+      day: 'Fri',
+      slots: []
+    }
+  ]
+}
+
+const { item, loading, getInputError, saveItem, serverErrors } = formHock<Iform>('calendars', 'edit', formSetup, validation, prop.doctorWorkspaceId)
+
+const resetData = () => {
+  item.value.data = [
+    {
+      day: 'Sat',
+      slots: []
+    },
+    {
+      day: 'Sun',
+      slots: []
+    },
+    {
+      day: 'Mon',
+      slots: []
+    },
+    {
+      day: 'Tues',
+      slots: []
+    },
+    {
+      day: 'Wed',
+      slots: []
+    },
+    {
+      day: 'Thurs',
+      slots: []
+    },
+    {
+      day: 'Fri',
+      slots: []
+    }
+  ]
+}
+
+
+const { t } = useI18n()
+// slots logic
+let i = 1;
+const slotsCalender = ref<dayType[] | null>(null);
+watch(() => item.value.time_interval, async (value) => {
+  if (i > 1) {
+    item.value.data = [
+    {
+        day: 'Sat',
+        slots: []
+      },
+      {
+        day: 'Sun',
+        slots: []
+      },
+      {
+        day: 'Mon',
+        slots: []
+      },
+      {
+        day: 'Tues',
+        slots: []
+      },
+      {
+        day: 'Wed',
+        slots: []
+      },
+      {
+        day: 'Thurs',
+        slots: []
+      },
+      {
+        day: 'Fri',
+        slots: []
+      }
+    ]
+  }
+  i++
+  if (value) {
+    const response = await axios.get(linkGnirator('calendar-templates/generate/slots'), {params: {"interval" : value ,"waiting_time" : 0, doctor_id : item.value.doctor_id, workspace_id: item.value.workspace_id}})
+    if (response.data.success) slotsCalender.value = response.data.data
+  }
+})
+
+
+const changeTemplate = (value: any) => {
+  axios.get(linkGnirator('calendar-templates/get-slots/' + value.id)).then( response => {
+    const data = response.data.data
+    item.value.first_come = data.first_come
+    item.value.data = [...data.data]
+  })
+}
+  
+
+// approve method
+const submitItem = async () => {
+  const response = await saveItem()
+  if (response.status) 
+    emit('onSuccess')
+  else 
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// interval options data
+const intervalOptions = ref<{key:string,value: number}[]>([])
+axios.get(linkGnirator('calendar-template/intervals')).then( response => {
+  const intervals: {key:string,value: number}[] = []
+  response.data.data.forEach((el: any) => intervals.push({key: el + ' ' + t('minutes'), value: el}))
+  intervalOptions.value = intervals
+})
+
+</script>
+
+<template>
+  <div>
+    <VAlert class="mb-4" border="start" border-color="error" v-for="error in serverErrors" :key="error">
+      {{ error }}
+    </VAlert>
+  </div>
+  <VRow>
+    <VCol cols="12">
+      <h6 class="text-sm font-weight-medium">
+        {{$t('Calender')}}
+      </h6>
+      <p class="text-xs mb-0">
+        {{$t('Enter clinic work time')}}
+      </p>
+    </VCol>
+    <VCol
+      md="6"
+      cols="12"
+    >
+      <VSelect
+        v-model="item.time_interval"
+        :label="$t('Time interval')"
+        item-title="key"
+        item-value="value"
+        :items="intervalOptions"
+        :error-messages="getInputError('time_interval')"
+      />
+    </VCol>
+    <VCol
+      md="6"
+      cols="12"
+    >
+      <Search
+        :label-string="$t('Calender template')"
+        :disabled="!item.time_interval"
+        :fillter="{
+          time_interval : item.time_interval,
+        }"
+        paths="calendar-templates"
+        title-param="title"
+        @change="(value) => {changeTemplate(value)}"
+        :error-messages="getInputError('time_interval')"
+      />
+    </VCol>
+    <VCol
+      md="6"
+      cols="12"
+    >
+      <VTextField
+        v-model="item.waiting_time"
+        :label="$t('Waiting time')"
+        type="number"
+        :error-messages="getInputError('waiting_time')"
+        :suffix="$t('Minutes')"
+      />
+    </VCol>
+    <VCol
+      md="6"
+      cols="12"
+    >
+      <div class="d-flex align-center gap-10">
+        <VRadioGroup
+          v-model="item.first_come"
+          :error-messages="getInputError('first_come')"
+          inline
+        >
+          <VRadio
+            :label="$t('On a specific time')"
+            :value="false"
+            @click="resetData"
+          />
+          <VRadio
+            :label="$t('First come first served')"
+            :value="true"
+            @click="resetData"
+          />
+        </VRadioGroup>
+      </div>
+    </VCol>
+    <VCol
+      md="12"
+      cols="12"
+    >
+      <WeekCalendar
+        v-model:value="item.data"
+        :slotsCalender="slotsCalender"
+        :grid-column="{ sm: '6', cols: '12' }"
+      />
+    </VCol>
+    <VCol cols="12">
+      <div class="d-flex justify-end flex-wrap gap-4">
+        <VBtn v-if="!loading" @click="submitItem">
+          {{ $t('Save') }}
+        </VBtn>
+        <VBtn v-else>
+          {{ $t('Loading') }}
+        </VBtn>
+      </div>
+    </VCol>
+  </VRow>
+
+</template>

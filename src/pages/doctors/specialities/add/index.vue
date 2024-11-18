@@ -1,0 +1,140 @@
+<script lang="ts" setup>
+import type Iform from './Iform'
+import validation from './validation'
+
+// get form helper
+import formHock from '@/helpers/formHock'
+
+// prepare item
+const formSetup: Iform = {
+  title: {
+    ar: '',
+    en: '',
+  },
+  survey_id: null,
+  parent_id: null,
+  status: true,
+  icon: '',
+}
+
+const { item, loading, getInputError, saveItem, serverErrors } = formHock<Iform>('specialities', 'add', formSetup, validation)
+
+const router = useRouter()
+
+const submitItem = async () => {
+  const response = await saveItem()
+  if (response.status) {
+    // go back
+    router.go(-1)
+  }
+  else {
+    // scroll to top screen
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+// Translation tabs
+const tab = ref(null)
+</script>
+
+<template>
+  <div>
+    <div>
+      <Breadcrubs
+      :links="[
+        {
+          title: $t('Home'),
+          link: '/'
+        },
+        {
+          title: $t('Specialities'),
+          link: '/doctors/specialities/list'
+        },
+        {
+          title: $t('Add')
+        }
+      ]"
+    />
+    </div>
+    <VCard
+      id="invoice-list"
+      :title="$t('Add specialities')"
+    >
+      <Form
+        :loading="loading"
+        :errors="[]"
+        :server-errors="serverErrors"
+        @save-item="submitItem"
+      >
+        <VRow>
+          <VCol cols="9">
+            <VRow>
+              <VCol
+                md="12"
+                cols="12"
+              >
+                <VTabs
+                  v-model="tab"
+                  align-tabs="center"
+                >
+                  <VTab value="english">
+                    {{ $t('English Translation') }}
+                  </VTab>
+                  <VTab value="arabic">
+                    {{ $t('Arabic Translation') }}
+                  </VTab>
+                </VTabs>
+                <VCardText class="py-0 px-0">
+                  <VWindow
+                    v-model="tab"
+                    class="pt-5"
+                  >
+                    <VWindowItem value="english">
+                      <VTextField
+                        v-model="item.title.en"
+                        :label="$t('English title')"
+                        :error-messages="getInputError('title.en')"
+                      />
+                    </VWindowItem>
+      
+                    <VWindowItem value="arabic">
+                      <VTextField
+                        v-model="item.title.ar"
+                        :label="$t('Arabic title')"
+                        :error-messages="getInputError('title.ar')"
+                      />
+                    </VWindowItem>
+                  </VWindow>
+                </VCardText>
+              </VCol>
+              <VCol
+                md="12"
+                cols="12"
+              >
+                <Search
+                  v-model:value="item.parent_id"
+                  :label-string="$t('Parent')"
+                  title-param="title"
+                  paths="specialities"
+                  :error-messages="getInputError('parent_id')"
+                />
+              </VCol>
+              <VCol cols="12">
+                <VCheckbox
+                  v-model="item.status"
+                  :label="$t('Active')"
+                />
+              </VCol>
+            </VRow>
+          </VCol>
+          <VCol cols="3" class="mt-10">
+            <FileInput
+              v-model:value="item.icon"
+              image-wrapper="imageWrapper"
+            />
+          </VCol>
+        </VRow>
+      </Form>
+    </VCard>
+  </div>
+</template>
